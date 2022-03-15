@@ -44,17 +44,22 @@ func main() {
 	defer file.Close()
 	log = l.New(file, "", l.LstdFlags)
 
-	kernelCommandLineArguments := []string{
-		// Use the first virtio console device as system console.
-		"console=hvc0",
-		// Stop in the initial ramdisk before attempting to transition to
-		// the root file system.
-		"root=/dev/vda",
-	}
-
 	vmlinuz := os.Getenv("VMLINUZ_PATH")
 	initrd := os.Getenv("INITRD_PATH")
 	diskPath := os.Getenv("DISKIMG_PATH")
+	kernelArgs := os.Getenv("KERNEL_CMDLINE_ARGS")
+
+	if kernelArgs == "" {
+		// If no args were specified, stop in the initial ramdisk
+		// before attempting to transition to the root file system.
+		kernelArgs = "root=/dev/vda"
+	}
+
+	kernelCommandLineArguments := []string{
+		// Use the first virtio console device as system console.
+		"console=hvc0",
+		kernelArgs,
+	}
 
 	bootLoader, err := vz.NewLinuxBootLoader(
 		vmlinuz,
