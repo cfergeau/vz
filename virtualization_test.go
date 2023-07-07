@@ -1,8 +1,10 @@
 package vz_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net"
@@ -153,6 +155,14 @@ func getFreePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
+func getSocketDevice(t *testing.T, vm *vz.VirtualMachine) *vz.VirtioSocketDevice {
+	socketDevices := vm.SocketDevices()
+	if len(socketDevices) != 1 {
+		t.Fatalf("want the number of socket devices is 1 but got %d", len(socketDevices))
+	}
+	return socketDevices[0]
+}
+
 func newVirtualizationMachine(
 	t *testing.T,
 	configs ...func(*vz.VirtualMachineConfiguration) error,
@@ -193,11 +203,7 @@ func newVirtualizationMachine(
 	if err != nil {
 		t.Fatal(err)
 	}
-	socketDevices := vm.SocketDevices()
-	if len(socketDevices) != 1 {
-		t.Fatalf("want the number of socket devices is 1 but got %d", len(socketDevices))
-	}
-	socketDevice := socketDevices[0]
+	socketDevice := getSocketDevice(t, vm)
 
 	if canStart := vm.CanStart(); !canStart {
 		t.Fatal("want CanStart is true")
@@ -524,6 +530,70 @@ func TestRunIssue124(t *testing.T) {
 
 	runtime.GC()
 	sshSession.Run("poweroff")
+	waitState(t, timeout, vm, vz.VirtualMachineStateStopped)
+
+	if got := vm.State(); vz.VirtualMachineStateStopped != got {
+		t.Fatalf("want state %v but got %v", vz.VirtualMachineStateStopped, got)
+	}
+}
+
+func TestRunIssue131(t *testing.T) {
+	/*
+		if os.Getenv("TEST_ISSUE_131") != "1" {
+			t.Skip()
+		}
+	*/
+	container := newVirtualizationMachine(t,
+		func(vmc *vz.VirtualMachineConfiguration) error {
+			return setupConsoleConfig(vmc)
+		},
+	)
+	defer container.Close()
+
+	sshSession := container.NewSession(t)
+	defer sshSession.Close()
+
+	vm := container.VirtualMachine
+
+	if got := vm.State(); vz.VirtualMachineStateRunning != got {
+		t.Fatalf("want state %v but got %v", vz.VirtualMachineStateRunning, got)
+	}
+	socketDevice := getSocketDevice(t, vm)
+	listener, err := socketDevice.Listen(1234)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	iterCount := 10_000
+	go func() {
+		for i := 0; i < iterCount; i++ {
+			sshSession := container.NewSession(t)
+			defer sshSession.Close()
+			if err := sshSession.Run(`echo "Code-Hex/vz" | socat - VSOCK-CONNECT:2:1234`); err != nil {
+				t.Fatal(err)
+			}
+			runtime.GC()
+		}
+	}()
+	for i := 0; i < iterCount; i++ {
+		conn, err := listener.Accept()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(conn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = bytes.TrimSpace(data)
+		if !bytes.Equal(data, []byte("Code-Hex/vz")) {
+			t.Fatalf("want [Code-Hex/vz] but got [%s]", string(data))
+		}
+		conn.Close()
+	}
+	t.Logf("Successfully iterated 10.000 times")
+
+	sshSession.Run("poweroff")
+	timeout := 5 * time.Second
 	waitState(t, timeout, vm, vz.VirtualMachineStateStopped)
 
 	if got := vm.State(); vz.VirtualMachineStateStopped != got {
