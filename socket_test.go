@@ -5,11 +5,48 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/Code-Hex/vz/v3"
 )
+
+func TestVirtioSocketConnectFailure(t *testing.T) {
+	var conn net.Conn
+	defer func() {
+		if conn != nil {
+			conn.Close()
+		}
+	}()
+
+	container := newVirtualizationMachine(t)
+	defer container.Close()
+
+	vm := container.VirtualMachine
+
+	socketDevice := vm.SocketDevices()[0] // already tested in newVirtualizationMachine
+
+	port := 43218
+	done := make(chan struct{})
+
+	go func() {
+		var err error
+		defer close(done)
+
+		conn, err = socketDevice.Connect(uint32(port))
+		if err != nil {
+			t.Errorf("failed to accept connection: %v", err)
+			return
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatalf("timeout when attempting to connect to vsock")
+	}
+}
 
 func TestVirtioSocketListener(t *testing.T) {
 	container := newVirtualizationMachine(t)
