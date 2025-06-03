@@ -6,12 +6,12 @@
 * classdump-dyld is licensed under GPLv3, Copyright © 2013-2016 by Elias Limneos.
 */
 
-#import <Virtualization/Virtualization-Structs.h>
+//#import <Virtualization/Virtualization-Structs.h>
 #import <Virtualization/VZSerialPortConfiguration.h>
 
 @interface _VZ16550SerialPortConfiguration : VZSerialPortConfiguration
 +(long long)serialPortType;
 -(id)init;
--(expected<VzCore::VirtualMachineConfiguration::SerialPort, NSError *>)_serialPort;
+//-(expected<VzCore::VirtualMachineConfiguration::SerialPort, NSError *>)_serialPort;
 @end
 
