@@ -82,7 +82,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Serial port attachment creation failed: %s", err)
 	}
-	consoleConfig, err := vz.NewVirtioConsoleDeviceSerialPortConfiguration(serialPortAttachment)
+	consoleConfig, err := vz.NewPL011SerialPortConfiguration(serialPortAttachment)
 	if err != nil {
 		log.Fatalf("Failed to create serial configuration: %s", err)
 	}
