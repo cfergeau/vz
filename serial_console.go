@@ -112,33 +112,39 @@ func NewFileSerialPortAttachment(path string, shouldAppend bool) (*FileSerialPor
 	return attachment, nil
 }
 
+type SerialPortConfiguration struct {
+	*pointer
+}
+
 // VirtioConsoleDeviceSerialPortConfiguration represents Virtio Console Serial Port Device.
 //
 // The device creates a console which enables communication between the host and the guest through the Virtio interface.
 // The device sets up a single port on the Virtio console device.
 // see: https://developer.apple.com/documentation/virtualization/vzvirtioconsoledeviceserialportconfiguration?language=objc
 type VirtioConsoleDeviceSerialPortConfiguration struct {
-	*pointer
+	SerialPortConfiguration
 }
 
 // NewVirtioConsoleDeviceSerialPortConfiguration creates a new NewVirtioConsoleDeviceSerialPortConfiguration.
 //
 // This is only supported on macOS 11 and newer, error will
 // be returned on older versions.
-func NewVirtioConsoleDeviceSerialPortConfiguration(attachment SerialPortAttachment) (*VirtioConsoleDeviceSerialPortConfiguration, error) {
+func NewVirtioConsoleDeviceSerialPortConfiguration(attachment SerialPortAttachment) (*SerialPortConfiguration, error) {
 	if err := macOSAvailable(11); err != nil {
 		return nil, err
 	}
 
 	config := &VirtioConsoleDeviceSerialPortConfiguration{
-		pointer: objc.NewPointer(
-			C.newVZVirtioConsoleDeviceSerialPortConfiguration(
-				objc.Ptr(attachment),
+		SerialPortConfiguration{
+			pointer: objc.NewPointer(
+				C.newVZVirtioConsoleDeviceSerialPortConfiguration(
+					objc.Ptr(attachment),
+				),
 			),
-		),
+		},
 	}
 	objc.SetFinalizer(config, func(self *VirtioConsoleDeviceSerialPortConfiguration) {
 		objc.Release(self)
 	})
-	return config, nil
+	return &config.SerialPortConfiguration, nil
 }

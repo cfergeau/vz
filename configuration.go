@@ -129,7 +129,7 @@ func (v *VirtualMachineConfiguration) NetworkDevices() []*VirtioNetworkDeviceCon
 }
 
 // SetSerialPortsVirtualMachineConfiguration sets list of serial ports. Empty by default.
-func (v *VirtualMachineConfiguration) SetSerialPortsVirtualMachineConfiguration(cs []*VirtioConsoleDeviceSerialPortConfiguration) {
+func (v *VirtualMachineConfiguration) SetSerialPortsVirtualMachineConfiguration(cs []*SerialPortConfiguration) {
 	ptrs := make([]objc.NSObject, len(cs))
 	for i, val := range cs {
 		ptrs[i] = val

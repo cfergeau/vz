@@ -86,7 +86,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create serial configuration: %s", err)
 	}
-	config.SetSerialPortsVirtualMachineConfiguration([]*vz.VirtioConsoleDeviceSerialPortConfiguration{
+	config.SetSerialPortsVirtualMachineConfiguration([]*vz.SerialPortConfiguration{
 		consoleConfig,
 	})
 
